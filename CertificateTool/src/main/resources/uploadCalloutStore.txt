@@ -1,0 +1,156 @@
+#
+#! /bin/bash
+#
+
+# get home directory
+export ARCOT_HOME="/home/preview2/opt/arcot"
+export TOMCAT_HOME="/home/preview2/opt/tomcat"
+
+# For testing purpose - hardcoded to desired userid directly
+USERID=`whoami`
+HOME=`cat /etc/passwd | grep $USERID | cut -d: -f6`
+
+#
+# For testing purpose to use different user folder instead of generate log under ARCOT_HOME. 
+#
+#USER_HOME=`cat /etc/passwd | grep $USERID | cut -d: -f6`
+
+#
+# For testing purpose if login as different user and ARCOT_HOME setup is another user, please enable the next line for ARCOT_HOME user. 
+#
+#export HOME=/home/preview5
+
+# check to see if using -d or using -ed
+ops=$1
+csvFile=$2
+
+if [[ "$ops" = "-u" ]]; then
+    csvFile=$2
+    if [[ "$csvFile" = "" ]]; then
+        echo 
+        echo 
+        echo "Usage:"
+        echo
+        echo "1. Upload Keystore and/or Truststore file into the database."
+        echo "$0 -u Trust_or_Key_Store_Input_CSV_File"
+        echo 
+        echo "Where Trust_or_Key_Store_Input_CSV_File has the format like the following example:"
+        echo
+        echo "#Header columns for Input CSV file to upload KeyStore or TrustStore files"
+        echo "# Config_Name, KeyStore_Path_And_FileName, KeyStore_Pass_Phrase, TrustStore_Path_And_FileName, TrustStore_Pass_Phrase"
+        echo "Dummy Callout1, /home/user/keystore1.jks,dost1234,,"
+        echo "Dummy Callout2, /home/user/keystore2.p12,dost1234!,,"
+        echo "Dummy Callout3,,, /home/user/truststore3.pfx,dost1@34"
+        echo 
+        echo 
+        echo "2. Generate Signature algorithm for certificates stored in ARSigningCert table."
+        echo "$0 -as"
+        echo 
+        echo 
+        echo "3. Generate Signature algorithm for certificates stored in ARCalloutSSLConfig table."
+        echo "$0 -ac"
+        echo 
+        echo
+        exit 1
+    fi
+else
+    if [[ "$ops" != "-as" ]]; then
+        if [[ "$ops" != "-ac" ]]; then
+            echo 
+            echo 
+            echo "Usage:"
+            echo
+            echo "1. Upload Keystore and/or Truststore file into the database."
+            echo "$0 -u Trust_or_Key_Store_Input_CSV_File"
+            echo 
+            echo "Where Trust_or_Key_Store_Input_CSV_File has the format like the following example:"
+            echo
+            echo "#Header columns for Input CSV file to upload KeyStore or TrustStore files"
+            echo "# Config_Name, KeyStore_Path_And_FileName, KeyStore_Pass_Phrase, TrustStore_Path_And_FileName, TrustStore_Pass_Phrase"
+            echo "Dummy Callout1, /home/user/keystore1.jks,dost1234,,"
+            echo "Dummy Callout2, /home/user/keystore2.p12,dost1234!,,"
+            echo "Dummy Callout3,,, /home/user/truststore3.pfx,dost1@34"
+            echo 
+            echo 
+            echo "2. Generate Signature algorithm for certificates stored in ARSigningCert table."
+            echo "$0 -as"
+            echo 
+            echo 
+            echo "3. Generate Signature algorithm for certificates stored in ARCalloutSSLConfig table."
+            echo "$0 -ac"
+            echo 
+            echo
+            exit 1
+        fi
+    fi
+fi
+
+if [[ "$ops" = "-u" ]]; then
+    echo
+    echo "*****************************************************************************"
+    echo "Running uploadCalloutCert utility to upload callout truststores or keystores "
+    echo "*****************************************************************************"
+    echo
+else
+    echo
+    echo "*****************************************************************************"
+    echo "Running uploadCalloutCert utility to generate the signature algorithm report "
+    echo "*****************************************************************************"
+    echo
+fi
+
+# check to see if ARCOT_HOME is set. if not, set to default value
+if [[ "$ARCOT_HOME" = "" ]]; then
+    export ARCOT_HOME=$HOME/opt/arcot
+    echo
+    echo "******************************************************************************************************************************************"
+    echo "Current ARCOT_HOME is $ARCOT_HOME. If different, please set to different value and run again"
+    echo "******************************************************************************************************************************************"
+    echo
+fi
+
+#
+# For testing purpose to use different user folder instead of generate log under ARCOT_HOME. 
+# If enable using $USER_HOME, then comment out the next line for LOGPATH using $ARCOT_HOME
+#
+#LOGPATH=$USER_HOME/opt/arcot/logs/UploadCalloutStore
+LOGPATH=$ARCOT_HOME/logs/UploadCalloutStore
+LOGFILE=UploadCalloutStore.log
+if [ ! -d "$LOGPATH" ]; then
+    echo "Creating '$LOGPATH' directory"
+    mkdir $LOGPATH
+fi
+
+# check to see if TOMCAT_HOME is set. if not, set to default value
+if [[ "$TOMCAT_HOME" = "" ]]; then
+    export TOMCAT_HOME=$ARCOT_HOME/../tomcat
+    echo
+    echo "*************************************************************************************************************************************************"
+    echo "Current jar file folder is $TOMCAT_HOME/webapps/vpas/WEB-INF/lib. If different, please set to different value and run again"
+    echo "*************************************************************************************************************************************************"
+fi
+
+export CLASSPATH=.:$TOMCAT_HOME/nbiservice-issuer-tools/pssslinfra-1.0.jar:$TOMCAT_HOME/nbiservice-issuer-tools/certificate-tool-1.0.0.jar:$TOMCAT_HOME/nbiservice-issuer-tools/psdbwrapper-1.0.jar:$TOMCAT_HOME/webapps/vpas/WEB-INF/lib/ojdbc6-11.2.0.4.jar:$TOMCAT_HOME/webapps/vpas/WEB-INF/classes:$CLASSPATH
+
+if [[ "$ops" = "-u" ]]; then
+    echo "java -Djava.library.path=$ARCOT_HOME/lib com.ca.nbiapps.certtool.certupload.UploadCalloutStore $csvFile"
+    java -Djava.library.path=$ARCOT_HOME/lib com.ca.nbiapps.certtool.certupload.UploadCalloutStore $csvFile >> $LOGPATH/$LOGFILE
+    echo
+    echo "Upload Process done! Please check the result in $LOGPATH/$LOGFILE and event logs under $ARCOT_HOME/logs directory"
+elif [[ "$ops" = "-as" ]]; then
+    echo "java -Djava.library.path=$ARCOT_HOME/lib com.ca.nbiapps.certtool.certupload.CheckCertSigAlgorithm -s -o $LOGPATH/SigningCertAlg.txt"
+    java -Djava.library.path=$ARCOT_HOME/lib com.ca.nbiapps.certtool.certupload.CheckCertSigAlgorithm -s -o $LOGPATH/SigningCertAlg.txt >> $LOGPATH/$LOGFILE
+    echo
+    echo "Signature Algorith generation done. Please check the result in $LOGPATH/$LOGFILE and event logs under $ARCOT_HOME/logs directory"
+    echo "The signature algortiom report is available in SigningCertAlg.txt file under the $LOGPATH directory"
+elif [[ "$ops" = "-ac" ]]; then
+    echo "java -Djava.library.path=$ARCOT_HOME/lib com.ca.nbiapps.certtool.certupload.CheckCertSigAlgorithm -c -o $LOGPATH/CalloutCertAlg.txt"
+    java -Djava.library.path=$ARCOT_HOME/lib com.ca.nbiapps.certtool.certupload.CheckCertSigAlgorithm -c -o $LOGPATH/CalloutCertAlg.txt >> $LOGPATH/$LOGFILE
+    echo
+    echo "Signature Algorith generation done. Please check the result in $LOGPATH/$LOGFILE and event logs under $ARCOT_HOME/logs directory"
+    echo "The signature algortiom report is available in CalloutCertAlg.txt file under the $LOGPATH directory"
+fi
+
+echo
+echo
+
