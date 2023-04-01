@@ -22,10 +22,10 @@ import java.sql.ResultSet;
 import java.text.SimpleDateFormat;
 import java.util.Enumeration;
 import java.util.Properties;
-import com.arcot.crypto.Base64;
-import com.arcot.crypto.CryptoUtil;
-import com.arcot.database.DatabaseConnection;
-import com.arcot.logger.ArcotLogger;
+import com.security.crypto.Base64;
+import com.security.crypto.CryptoUtil;
+import com.security.database.DatabaseConnection;
+import com.security.logger.LoggerLog;
 import com.ca.nbiapps.certtool.dboperations.DBWrapper;
 
 import sun.security.pkcs.PKCS7;
@@ -55,9 +55,9 @@ public class UploadCalloutStore
             prop = new Properties();
 			InputStream in = this.getClass().getResourceAsStream("/certsUpload.properties");
 			if (in != null)
-			    ArcotLogger.logInfo("In UploadCalloutStore: properties loaded");
+				LoggerLog.logInfo("In UploadCalloutStore: properties loaded");
 			else
-			    ArcotLogger.logError("In UploadCalloutStore: properties not loaded");
+				LoggerLog.logError("In UploadCalloutStore: properties not loaded");
 			prop.load(in);
 			in.close();
         }
@@ -95,7 +95,7 @@ public class UploadCalloutStore
         }
         catch(ClassNotFoundException e)
         {
-            ArcotLogger.logError("In UploadCalloutStore.initConnection: Cannot find JDBC Driver JAR file.", e);
+			LoggerLog.logError("In UploadCalloutStore.initConnection: Cannot find JDBC Driver JAR file.", e);
         }
         String jdbcUrl = null;
         String dbuser = null;
@@ -129,16 +129,16 @@ public class UploadCalloutStore
         	    softEncrypt = false;
 		}
 
-        ArcotLogger.logInfo("In UploadCalloutStore.initConnection: connectionType = " + connectionType);
-        ArcotLogger.logInfo("In UploadCalloutStore.initConnection: jdbcUrl = " + jdbcUrl);
-        ArcotLogger.logInfo("In UploadCalloutStore.initConnection: softEncrypt = " + softEncrypt);
+		LoggerLog.logInfo("In UploadCalloutStore.initConnection: connectionType = " + connectionType);
+		LoggerLog.logInfo("In UploadCalloutStore.initConnection: jdbcUrl = " + jdbcUrl);
+		LoggerLog.logInfo("In UploadCalloutStore.initConnection: softEncrypt = " + softEncrypt);
 
 		masterKey = prop.getProperty("encryptionKey");
 		if (masterKey != null && !"".equals(masterKey))
             masterKey = new String(Base64.decode(masterKey));
 	    else
 	    {
-		    ArcotLogger.logError("In UploadCalloutStore.initConnection: Cannot get MasterKey value from properties file.");
+			LoggerLog.logError("In UploadCalloutStore.initConnection: Cannot get MasterKey value from properties file.");
         	initResult = false;
 
         	return initResult;
@@ -169,12 +169,12 @@ public class UploadCalloutStore
 			boolean gotConnection = false;
             if(connectionType != null && connectionType.equalsIgnoreCase("admin"))
             {
-				ArcotLogger.logInfo("In UploadCalloutStore.initConnection: Use TransFort DBHandler class to manage DB connections!");
+				LoggerLog.logInfo("In UploadCalloutStore.initConnection: Use TransFort DBHandler class to manage DB connections!");
                 conn = new DBWrapper().getAdminConnection();
                 if (conn == null)
                 {
                     connectionType = "transfort";
-				    ArcotLogger.logInfo("In UploadCalloutStore.initConnection: Failed with Admin connection. Use TransFort Type to connect.");
+					LoggerLog.logInfo("In UploadCalloutStore.initConnection: Failed with Admin connection. Use TransFort Type to connect.");
 			    }
 			    else
 			        gotConnection = true;
@@ -182,7 +182,7 @@ public class UploadCalloutStore
 
  		    if (!gotConnection && connectionType != null && connectionType.equalsIgnoreCase("transfort"))
             {
-				ArcotLogger.logInfo("In UploadCalloutStore.initConnection: Use TransFort vpaspwd.ini settings to manage DB connections!");
+				LoggerLog.logInfo("In UploadCalloutStore.initConnection: Use TransFort vpaspwd.ini settings to manage DB connections!");
                 if (jdbcUrl.indexOf("PROTOCOL=tcps") != -1)
                     connection = new DBWrapper(jdbcUrl,dbuser).getConnection(props);
                 else
@@ -194,14 +194,14 @@ public class UploadCalloutStore
 
             if (!gotConnection)
             {
-				ArcotLogger.logInfo("In UploadCalloutStore.initConnection: Use JDBC driver connection to manage DB connections!");
+				LoggerLog.logInfo("In UploadCalloutStore.initConnection: Use JDBC driver connection to manage DB connections!");
                 connection = new DBWrapper(jdbcUrl,dbuser,dbpasswd).getConnection();
                 initResult = false;
             }
         }
         catch(Exception e)
         {
-            ArcotLogger.logError("In UploadCalloutStore.initConnection: Connection Failed!", e);
+			LoggerLog.logError("In UploadCalloutStore.initConnection: Connection Failed!", e);
             initResult = false;
         }
 
@@ -221,7 +221,7 @@ public class UploadCalloutStore
 
 	public int runCommand(String command) throws IOException
 	{
-		ArcotLogger.logInfo("In UploadCalloutStore.runCommand: Executing command - " + command);
+		LoggerLog.logInfo("In UploadCalloutStore.runCommand: Executing command - " + command);
 		int returnValue = -1;
 		try {
 			Process process = Runtime.getRuntime().exec( command );
@@ -238,9 +238,9 @@ public class UploadCalloutStore
 	{
 		// if more than 1 store files are provided, then the number of password provided needs to be the same.
 		// The format for multiple passwords will be of format: PASSWORD1:pwd=PASSWORD2:pwd=PASSWORD3....
-		// eg. if 2 passwords are provided, it will look like dost1234:pwd=arcotABCD.
+		// eg. if 2 passwords are provided, it will look like dost1234:pwd=ABCD.
 		// If store file is not PKCS12 or JKS and thus no password, then the prefix is still needed but value could be left blank.
-		// e.g. dost1234:pwd=:pwd=arcotABCD
+		// e.g. dost1234:pwd=:pwd=LoggerLog
 		int idx = 0;
 		PKCS7 pkcs7 = null;
 		FileInputStream fis = null;
@@ -277,16 +277,16 @@ public class UploadCalloutStore
 		{
 			if (runCommand(cmdStr) != 0)
 			{
-				ArcotLogger.logError("In UploadCalloutStore.checkAndConvertCertType: Cannot remove the file: " + jksFileName);
+				LoggerLog.logError("In UploadCalloutStore.checkAndConvertCertType: Cannot remove the file: " + jksFileName);
 				return "ERROR";
 			}
 		}
         catch (IOException e)
         {
-            ArcotLogger.logError("In UploadCalloutStore.checkAndConvertCertType: Cannot remove the file: " + jksFileName, e);
+			LoggerLog.logError("In UploadCalloutStore.checkAndConvertCertType: Cannot remove the file: " + jksFileName, e);
             return "ERROR";
         }
-		ArcotLogger.logInfo("In UploadCalloutStore.checkAndConvertCertType: Removing existing file: " + jksFileName);
+		LoggerLog.logInfo("In UploadCalloutStore.checkAndConvertCertType: Removing existing file: " + jksFileName);
 
 		String certTypes[] = new String[numFiles];
 		for (idx = 0;idx < numFiles;idx++)
@@ -315,16 +315,16 @@ public class UploadCalloutStore
 				{
 					if (runCommand(cmdStr) != 0)
 					{
-						ArcotLogger.logError("In UploadCalloutStore.checkAndConvertCertType: Cannot import the file: " + storeFiles[idx] + " to file " + jksFileName);
+						LoggerLog.logError("In UploadCalloutStore.checkAndConvertCertType: Cannot import the file: " + storeFiles[idx] + " to file " + jksFileName);
 						return "ERROR";
 					}
 				}
 				catch (IOException e)
 				{
-					ArcotLogger.logError("In UploadCalloutStore.checkAndConvertCertType: Cannot import the file: " + storeFiles[idx] + " to file " + jksFileName, e);
+					LoggerLog.logError("In UploadCalloutStore.checkAndConvertCertType: Cannot import the file: " + storeFiles[idx] + " to file " + jksFileName, e);
 					return "ERROR";
 				}
-				ArcotLogger.logInfo("In UploadCalloutStore.checkAndConvertCertType: Import " + certTypes[idx] + " format " + storeFiles[idx] + " to " + jksFileName + " file to be uploaded");
+				LoggerLog.logInfo("In UploadCalloutStore.checkAndConvertCertType: Import " + certTypes[idx] + " format " + storeFiles[idx] + " to " + jksFileName + " file to be uploaded");
 
 				continue;
 			}
@@ -341,16 +341,16 @@ public class UploadCalloutStore
 				{
 					if (runCommand(cmdStr) != 0)
 					{
-						ArcotLogger.logError("In UploadCalloutStore.checkAndConvertCertType: Cannot import the file: " + storeFiles[idx] + " to file " + jksFileName);
+						LoggerLog.logError("In UploadCalloutStore.checkAndConvertCertType: Cannot import the file: " + storeFiles[idx] + " to file " + jksFileName);
 						return "ERROR";
 					}
 				}
 				catch (IOException e)
 				{
-					ArcotLogger.logError("In UploadCalloutStore.checkAndConvertCertType: Cannot import the file: " + storeFiles[idx] + " to file " + jksFileName, e);
+					LoggerLog.logError("In UploadCalloutStore.checkAndConvertCertType: Cannot import the file: " + storeFiles[idx] + " to file " + jksFileName, e);
 					return "ERROR";
 				}
-				ArcotLogger.logInfo("In UploadCalloutStore.checkAndConvertCertType: Import " + certTypes[idx] + " format " + storeFiles[idx] + " to " + jksFileName + " file to be uploaded");
+				LoggerLog.logInfo("In UploadCalloutStore.checkAndConvertCertType: Import " + certTypes[idx] + " format " + storeFiles[idx] + " to " + jksFileName + " file to be uploaded");
 
 				continue;
 			}
@@ -364,7 +364,7 @@ public class UploadCalloutStore
 				pkcs7 = new PKCS7(fis);
 				certTypes[idx] = "PKCS7";
 				fis.close();
-			    ArcotLogger.logError("In UploadCalloutStore.checkAndConvertCertType: PKCS7 format is not supported and cannot be imported to " + jksFileName);
+				LoggerLog.logError("In UploadCalloutStore.checkAndConvertCertType: PKCS7 format is not supported and cannot be imported to " + jksFileName);
 
 			    return certTypes[idx];
 
@@ -392,16 +392,16 @@ public class UploadCalloutStore
 					    cmdStr = "keytool -importcert -file " + storeFiles[idx] + " -keystore " + jksFileName + " -storepass " + storePwds[idx] + " -storetype jks -alias " + storeFiles[idx] + " -noprompt";
 						if (runCommand(cmdStr) != 0)
 						{
-							ArcotLogger.logError("In UploadCalloutStore.checkAndConvertCertType: keytool import file: "  + storeFiles[idx] + " to " + jksFileName + "failed");
+							LoggerLog.logError("In UploadCalloutStore.checkAndConvertCertType: keytool import file: "  + storeFiles[idx] + " to " + jksFileName + "failed");
 							return "ERROR";
 						}
 					}
 					catch (IOException e)
 					{
-						ArcotLogger.logError("In UploadCalloutStore.checkAndConvertCertType: keytool import file: "  + storeFiles[idx] + " to " + jksFileName + "failed", e);
+						LoggerLog.logError("In UploadCalloutStore.checkAndConvertCertType: keytool import file: "  + storeFiles[idx] + " to " + jksFileName + "failed", e);
 						return "ERROR";
 					}
-					ArcotLogger.logInfo("In UploadCalloutStore.checkAndConvertCertType: Convert " + certTypes[idx] + " format " + storeFiles[idx] + " to " + jksFileName + " file to be uploaded");
+					LoggerLog.logInfo("In UploadCalloutStore.checkAndConvertCertType: Convert " + certTypes[idx] + " format " + storeFiles[idx] + " to " + jksFileName + " file to be uploaded");
 
 					certTypes[idx] = "JKS";
 				}
@@ -417,7 +417,7 @@ public class UploadCalloutStore
 	{
 		boolean retValue = true;
 
-	    ArcotLogger.logInfo("In UploadCalloutStore.checkStoreValidity: Check if " + fileName + " has valid format...");
+		LoggerLog.logInfo("In UploadCalloutStore.checkStoreValidity: Check if " + fileName + " has valid format...");
 		if (fileName == null || passPhrase == null || bundleType == null ||
 		    "".equals(fileName) || "".equals(passPhrase) || "".equals(bundleType))
 			return false;
@@ -443,17 +443,17 @@ public class UploadCalloutStore
 				bundleType = checkAndConvertCertType(fileName, passPhrase, isKeyStore);
 				if ("PKCS7".equalsIgnoreCase(bundleType))
 				{
-				    ArcotLogger.logError("In UploadCalloutStore.checkStoreValidity: PKCS7 format is not supported");
+					LoggerLog.logError("In UploadCalloutStore.checkStoreValidity: PKCS7 format is not supported");
 				    return false;
 				}
 				else if ("NOPWD".equalsIgnoreCase(bundleType))
 				{
-				    ArcotLogger.logError("In UploadCalloutStore.checkStoreValidity: The number of store files provided is not the same as the number of passwords provided.");
+					LoggerLog.logError("In UploadCalloutStore.checkStoreValidity: The number of store files provided is not the same as the number of passwords provided.");
 				    return false;
 				}
 				else if ("ERROR".equalsIgnoreCase(bundleType))
 				{
-				    ArcotLogger.logError("In UploadCalloutStore.checkStoreValidity: Ecounter I/O Error while executing keytool.");
+					LoggerLog.logError("In UploadCalloutStore.checkStoreValidity: Ecounter I/O Error while executing keytool.");
 				    return false;
 				}
 				else
@@ -468,7 +468,7 @@ public class UploadCalloutStore
 				}
 			}
 
-		    ArcotLogger.logError("In UploadCalloutStore.checkStoreValidity: Loading file " + fileName + " to JKS keystore");
+			LoggerLog.logError("In UploadCalloutStore.checkStoreValidity: Loading file " + fileName + " to JKS keystore");
 			ios = new FileInputStream(fileName);
 			if (isKeyStore)
 				keyStore.load(ios, passPhrase.toCharArray());
@@ -478,12 +478,12 @@ public class UploadCalloutStore
 		catch(IOException e)
 		{
 			if (e.getCause() instanceof UnrecoverableKeyException)
-			    ArcotLogger.logError("In UploadCalloutStore.checkStoreValidity: store passphrase might not be correct. Failure reason: " + e.getMessage());
+				LoggerLog.logError("In UploadCalloutStore.checkStoreValidity: store passphrase might not be correct. Failure reason: " + e.getMessage());
 			else
 			{
 				try
 				{
-				    ArcotLogger.logError("In UploadCalloutStore.checkStoreValidity: IOException Occurred. Failure reason: " + e.getMessage() + ". Continue check if it is different bundle type");
+					LoggerLog.logError("In UploadCalloutStore.checkStoreValidity: IOException Occurred. Failure reason: " + e.getMessage() + ". Continue check if it is different bundle type");
 					// Try loading with different bundle type to verify if the store is of that type
 					if ("PKCS12".equals(bundleType))
 						keyStore = KeyStore.getInstance("JKS");
@@ -496,25 +496,25 @@ public class UploadCalloutStore
 				catch(IOException ex)
 				{
 					if (ex.getCause() instanceof UnrecoverableKeyException)
-						ArcotLogger.logError("In UploadCalloutStore.checkStoreValidity: store passphrase might not be correct. Failure reason: " + ex.getMessage());
+						Logger.logError("In UploadCalloutStore.checkStoreValidity: store passphrase might not be correct. Failure reason: " + ex.getMessage());
 					else
-					    ArcotLogger.logError("In UploadCalloutStore.checkStoreValidity: IOException Occurred. Failure reason: " + ex.getMessage());
+					    Logger.logError("In UploadCalloutStore.checkStoreValidity: IOException Occurred. Failure reason: " + ex.getMessage());
 
 					retValue = false;
 				}
 				catch(KeyStoreException ex)
 				{
-					ArcotLogger.logError("In UploadCalloutStore.checkStoreValidity: intended file is not valid " + bundleType + "Failure reason: " + ex.getMessage());
+					Logger.logError("In UploadCalloutStore.checkStoreValidity: intended file is not valid " + bundleType + "Failure reason: " + ex.getMessage());
 					retValue = false;
 				}
 				catch(NoSuchAlgorithmException ex)
 				{
-					ArcotLogger.logError("In UploadCalloutStore.checkStoreValidity: intended file is not valid " + bundleType + "Failure reason: " + ex.getMessage());
+					Logger.logError("In UploadCalloutStore.checkStoreValidity: intended file is not valid " + bundleType + "Failure reason: " + ex.getMessage());
 					retValue = false;
 				}
 				catch(CertificateException ex)
 				{
-					ArcotLogger.logError("In UploadCalloutStore.checkStoreValidity: intended file is not valid " + bundleType + "Failure reason: " + ex.getMessage());
+					Logger.logError("In UploadCalloutStore.checkStoreValidity: intended file is not valid " + bundleType + "Failure reason: " + ex.getMessage());
 					retValue = false;
 				}
 				finally
@@ -533,17 +533,17 @@ public class UploadCalloutStore
 		}
 		catch(KeyStoreException e)
 		{
-		    ArcotLogger.logError("In UploadCalloutStore.checkStoreValidity: intended file is not valid " + bundleType + "Failure reason: " + e.getMessage());
+		    Logger.logError("In UploadCalloutStore.checkStoreValidity: intended file is not valid " + bundleType + "Failure reason: " + e.getMessage());
 			retValue = false;
 		}
 		catch(NoSuchAlgorithmException e)
 		{
-		    ArcotLogger.logError("In UploadCalloutStore.checkStoreValidity: intended file is not valid " + bundleType + "Failure reason: " + e.getMessage());
+		    Logger.logError("In UploadCalloutStore.checkStoreValidity: intended file is not valid " + bundleType + "Failure reason: " + e.getMessage());
 			retValue = false;
 		}
 		catch(CertificateException e)
 		{
-		    ArcotLogger.logError("In UploadCalloutStore.checkStoreValidity: intended file is not valid " + bundleType + "Failure reason: " + e.getMessage());
+		    Logger.logError("In UploadCalloutStore.checkStoreValidity: intended file is not valid " + bundleType + "Failure reason: " + e.getMessage());
 			retValue = false;
 		}
 		finally
@@ -555,18 +555,18 @@ public class UploadCalloutStore
 			}
 			catch(Exception ex2)
 			{
-			    ArcotLogger.logError("In UploadCalloutStore.checkStoreValidity: intended file is not valid " + bundleType + "Failure reason: " + ex2.getMessage());
+			    Logger.logError("In UploadCalloutStore.checkStoreValidity: intended file is not valid " + bundleType + "Failure reason: " + ex2.getMessage());
 				retValue = false;
 			}
 		}
 
-	    ArcotLogger.logInfo("In UploadCalloutStore.checkStoreValidity: " + fileName + " has valid format!");
+	    Logger.logInfo("In UploadCalloutStore.checkStoreValidity: " + fileName + " has valid format!");
 		return retValue;
 	}
 
 	public java.util.Date getLeastExpiryDate(String fileName, String passPhrase, String bundleType)
 	{
-	    ArcotLogger.logInfo("In UploadCalloutStore.getLeastExpiryDate: Get expiry date from file " + fileName);
+	    Logger.logInfo("In UploadCalloutStore.getLeastExpiryDate: Get expiry date from file " + fileName);
 		java.util.Date leastExpiryDate = null;
 		FileInputStream ios = null;
 		KeyStore keyStore = null;
@@ -601,23 +601,23 @@ public class UploadCalloutStore
 		catch(IOException e)
 		{
 			if (e.getCause() instanceof UnrecoverableKeyException)
-			    ArcotLogger.logError("In UploadCalloutStore.getLeastExpiryDate: store passphrase might not be correct. Failure reason: " + e.getMessage());
+			    Logger.logError("In UploadCalloutStore.getLeastExpiryDate: store passphrase might not be correct. Failure reason: " + e.getMessage());
 			else
-			    ArcotLogger.logError("In UploadCalloutStore.getLeastExpiryDate: IOException Occurred. Failure reason: " + e.getMessage());
+			    Logger.logError("In UploadCalloutStore.getLeastExpiryDate: IOException Occurred. Failure reason: " + e.getMessage());
 		}
 		catch(KeyStoreException e)
 		{
-		    ArcotLogger.logError("In UploadCalloutStore.getLeastExpiryDate: intended file is not valid " + bundleType + "Failure reason: " + e.getMessage());
+		    Logger.logError("In UploadCalloutStore.getLeastExpiryDate: intended file is not valid " + bundleType + "Failure reason: " + e.getMessage());
 		}
 		catch(NoSuchAlgorithmException e)
 		{
-		    ArcotLogger.logError("In UploadCalloutStore.getLeastExpiryDate: intended file is not valid " + bundleType + "Failure reason: " + e.getMessage());
+		    Logger.logError("In UploadCalloutStore.getLeastExpiryDate: intended file is not valid " + bundleType + "Failure reason: " + e.getMessage());
 		}
 		catch(CertificateException e)
 		{
-		    ArcotLogger.logError("In UploadCalloutStore.getLeastExpiryDate: intended file is not valid " + bundleType + "Failure reason: " + e.getMessage());
+		    Logger.logError("In UploadCalloutStore.getLeastExpiryDate: intended file is not valid " + bundleType + "Failure reason: " + e.getMessage());
 		}
-	    ArcotLogger.logInfo("In UploadCalloutStore.getLeastExpiryDate: Successfully get expiry date - " + leastExpiryDate + " from file " + fileName + "!");
+	    Logger.logInfo("In UploadCalloutStore.getLeastExpiryDate: Successfully get expiry date - " + leastExpiryDate + " from file " + fileName + "!");
 		return leastExpiryDate;
 	}
 
@@ -732,14 +732,14 @@ public class UploadCalloutStore
 			if (rs.next())
 			{
 				checkResult = true;
-				ArcotLogger.logInfo("In UploadCalloutStore.isConfIDExist: ConfID " + configIDStr + " already exist in ARCalloutSSLConfig table.");
+				Logger.logInfo("In UploadCalloutStore.isConfIDExist: ConfID " + configIDStr + " already exist in ARCalloutSSLConfig table.");
 			}
 			else
-				ArcotLogger.logError("In UploadCalloutStore.isConfIDExist: ConfID " + configIDStr + " does not exist in ARCalloutSSLConfig table.");
+				Logger.logError("In UploadCalloutStore.isConfIDExist: ConfID " + configIDStr + " does not exist in ARCalloutSSLConfig table.");
 		}
 		catch(Exception e)
 		{
-			ArcotLogger.logError("In UploadCalloutStore.isConfIDExist: SQL Failed!", e);
+			Logger.logError("In UploadCalloutStore.isConfIDExist: SQL Failed!", e);
 		}
 		finally
 		{
@@ -752,7 +752,7 @@ public class UploadCalloutStore
 			}
 			catch(Exception e)
 			{
-				ArcotLogger.logError("In UploadCalloutStore.isConfIDExist: Error in Final Block", e);
+				Logger.logError("In UploadCalloutStore.isConfIDExist: Error in Final Block", e);
 			}
 			try
 			{
@@ -760,11 +760,11 @@ public class UploadCalloutStore
 					connection.close();
 				if(conn != null)
 					new DBWrapper().releaseAdminConnection(conn);
-				ArcotLogger.logInfo("In UploadCalloutStore.isConfIDExist: DB connection Released.");
+				Logger.logInfo("In UploadCalloutStore.isConfIDExist: DB connection Released.");
 			}
 			catch(Exception e)
 			{
-				ArcotLogger.logError("In UploadCalloutStore.isConfIDExist: Error in closing DB connection", e);
+				Logger.logError("In UploadCalloutStore.isConfIDExist: Error in closing DB connection", e);
 			}
 		}
 		return checkResult;
@@ -796,11 +796,11 @@ public class UploadCalloutStore
 			if (rs.next())
 				confid = rs.getInt(1);
 			else
-				ArcotLogger.logError("In UploadCalloutStore.getConfIDByConfName: Failed to execute query: " + selectConfIDStmt);
+				Logger.logError("In UploadCalloutStore.getConfIDByConfName: Failed to execute query: " + selectConfIDStmt);
 		}
 		catch(Exception e)
 		{
-			ArcotLogger.logError("In UploadCalloutStore.getConfIDByConfName: SQL Failed!", e);
+			Logger.logError("In UploadCalloutStore.getConfIDByConfName: SQL Failed!", e);
 		}
 		finally
 		{
@@ -813,7 +813,7 @@ public class UploadCalloutStore
 			}
 			catch(Exception e)
 			{
-				ArcotLogger.logError("In UploadCalloutStore.getConfIDByConfName: Error in Final Block", e);
+				Logger.logError("In UploadCalloutStore.getConfIDByConfName: Error in Final Block", e);
 			}
 			try
 			{
@@ -821,11 +821,11 @@ public class UploadCalloutStore
 					connection.close();
 				if(conn != null)
 					new DBWrapper().releaseAdminConnection(conn);
-				ArcotLogger.logInfo("In UploadCalloutStore.getConfIDByConfName: DB connection Released.");
+				Logger.logInfo("In UploadCalloutStore.getConfIDByConfName: DB connection Released.");
 			}
 			catch(Exception e)
 			{
-				ArcotLogger.logError("In UploadCalloutStore.getConfIDByConfName: Error in closing DB connection", e);
+				Logger.logError("In UploadCalloutStore.getConfIDByConfName: Error in closing DB connection", e);
 			}
 		}
 		return confid;
@@ -846,7 +846,7 @@ public class UploadCalloutStore
 		}
 		catch(Exception e)
 		{
-			ArcotLogger.logError("In UploadCalloutStore.convertFiletoByteArray: Loading " + fileName + " Failed:" + e.getMessage());
+			Logger.logError("In UploadCalloutStore.convertFiletoByteArray: Loading " + fileName + " Failed:" + e.getMessage());
 		}
 
 		return bytesArray;
@@ -939,15 +939,15 @@ public class UploadCalloutStore
 				connection.commit();
 
 			if (keyBundle != null)
-			    ArcotLogger.logInfo("In UploadCalloutStore.insertStoreFile: Insert Key Store file suceess: [confid,truststoretype,uploadedadmin] = " + "[" + confid + "," + keyBundleType + "," + adminName + "]");
+			    Logger.logInfo("In UploadCalloutStore.insertStoreFile: Insert Key Store file suceess: [confid,truststoretype,uploadedadmin] = " + "[" + confid + "," + keyBundleType + "," + adminName + "]");
 
 			if (trustBundle != null)
-			    ArcotLogger.logInfo("In UploadCalloutStore.insertStoreFile: Insert Trust Store file suceess: [confid,truststoretype,uploadedadmin] = " + "[" + confid + "," + trustBundleType + "," + adminName + "]");
+			    Logger.logInfo("In UploadCalloutStore.insertStoreFile: Insert Trust Store file suceess: [confid,truststoretype,uploadedadmin] = " + "[" + confid + "," + trustBundleType + "," + adminName + "]");
 
 		}
 		catch(Exception e)
 		{
-			ArcotLogger.logError("In UploadCalloutStore.insertStoreFile: SQL Failed!", e);
+			Logger.logError("In UploadCalloutStore.insertStoreFile: SQL Failed!", e);
             return rowsAffected;
 		}
 		finally
@@ -961,7 +961,7 @@ public class UploadCalloutStore
 			}
 			catch(Exception e)
 			{
-				ArcotLogger.logError("In UploadCalloutStore.insertStoreFile: Error in Final Block", e);
+				Logger.logError("In UploadCalloutStore.insertStoreFile: Error in Final Block", e);
 	            return rowsAffected;
 			}
 			try
@@ -970,11 +970,11 @@ public class UploadCalloutStore
 					connection.close();
 				if(conn != null)
 					new DBWrapper().releaseAdminConnection(conn);
-				ArcotLogger.logInfo("In UploadCalloutStore.insertStoreFile: DB connection Released.");
+				Logger.logInfo("In UploadCalloutStore.insertStoreFile: DB connection Released.");
 			}
 			catch(Exception e)
 			{
-				ArcotLogger.logError("In UploadCalloutStore.insertStoreFile: Error in closing DB connection", e);
+				Logger.logError("In UploadCalloutStore.insertStoreFile: Error in closing DB connection", e);
 				return rowsAffected;
 			}
 		}
@@ -1070,15 +1070,15 @@ public class UploadCalloutStore
 				connection.commit();
 
 			if (keyBundle != null)
-			    ArcotLogger.logInfo("In UploadCalloutStore.updateStoreFile: Update Key Store file suceess: [confid,truststoretype,uploadedadmin] = " + "[" + confid + "," + keyBundleType + "," + adminName + "]");
+			    Logger.logInfo("In UploadCalloutStore.updateStoreFile: Update Key Store file suceess: [confid,truststoretype,uploadedadmin] = " + "[" + confid + "," + keyBundleType + "," + adminName + "]");
 
 			if (trustBundle != null)
-			    ArcotLogger.logInfo("In UploadCalloutStore.updateStoreFile: Update Trust Store file suceess: [confid,truststoretype,uploadedadmin] = " + "[" + confid + "," + trustBundleType + "," + adminName + "]");
+			    Logger.logInfo("In UploadCalloutStore.updateStoreFile: Update Trust Store file suceess: [confid,truststoretype,uploadedadmin] = " + "[" + confid + "," + trustBundleType + "," + adminName + "]");
 
 		}
 		catch(Exception e)
 		{
-			ArcotLogger.logError("In UploadCalloutStore.updateStoreFile: SQL Failed!", e);
+			Logger.logError("In UploadCalloutStore.updateStoreFile: SQL Failed!", e);
             return rowsAffected;
 		}
 		finally
@@ -1092,7 +1092,7 @@ public class UploadCalloutStore
 			}
 			catch(Exception e)
 			{
-				ArcotLogger.logError("In UploadCalloutStore.updateStoreFile: Error in Final Block", e);
+				Logger.logError("In UploadCalloutStore.updateStoreFile: Error in Final Block", e);
 	            return rowsAffected;
 			}
 			try
@@ -1101,11 +1101,11 @@ public class UploadCalloutStore
 					connection.close();
 				if(conn != null)
 					new DBWrapper().releaseAdminConnection(conn);
-				ArcotLogger.logInfo("In UploadCalloutStore.updateStoreFile: DB connection Released.");
+				Logger.logInfo("In UploadCalloutStore.updateStoreFile: DB connection Released.");
 			}
 			catch(Exception e)
 			{
-				ArcotLogger.logError("In UploadCalloutStore.updateStoreFile: Error in closing DB connection", e);
+				Logger.logError("In UploadCalloutStore.updateStoreFile: Error in closing DB connection", e);
 				return rowsAffected;
 			}
 		}
@@ -1201,13 +1201,13 @@ public class UploadCalloutStore
 
                 if (storeInfo.length != 5)
                 {
-				    ArcotLogger.logError("In UploadCalloutStore.main: CSV line error. the input line must have exactly 5 columns:" + line);
+				    Logger.logError("In UploadCalloutStore.main: CSV line error. the input line must have exactly 5 columns:" + line);
 					System.out.println(ucsObj.getLogTimeHeader(null) + "In UploadCalloutStore.main: CSV line error. the input line must have exactly 5 columns:" + line);
 					ucsObj.writeErrorCSV(csvWriter, line, "CSV line error. The input line must have exactly 5 columns.");
 					continue;
 				}
 
-				ArcotLogger.logInfo("In UploadCalloutStore.main: [configName, keyStoreFile, keyStorePassPhrase, trustStoreFile, trustStorePassPhrase] = [" + configName + "," + keyStoreFile + ",********," + trustStoreFile + ",********]");
+				Logger.logInfo("In UploadCalloutStore.main: [configName, keyStoreFile, keyStorePassPhrase, trustStoreFile, trustStorePassPhrase] = [" + configName + "," + keyStoreFile + ",********," + trustStoreFile + ",********]");
 
 				boolean isKeystoreExist = (keyStoreFile != null && !"".equals(keyStoreFile));
 				boolean isTruststoreExist = (trustStoreFile != null && !"".equals(trustStoreFile));
@@ -1215,7 +1215,7 @@ public class UploadCalloutStore
 				// Make sure at least one store file is available
 				if (!isKeystoreExist && !isTruststoreExist)
 				{
-				    ArcotLogger.logError("In UploadCalloutStore.main: No store file in the input CSV line.");
+				    Logger.logError("In UploadCalloutStore.main: No store file in the input CSV line.");
 				    System.out.println(ucsObj.getLogTimeHeader(null) + "In UploadCalloutStore.main: No store file in the input CSV line.");
 				    ucsObj.writeErrorCSV(csvWriter, line, "No Keystore or Truststore file is given");
 				    encounterError = true;
@@ -1228,7 +1228,7 @@ public class UploadCalloutStore
 					File keyStoreFileHandle = new File(keyStoreFile);
 					if (!keyStoreFileHandle.exists() || keyStoreFileHandle.isDirectory())
 					{
-						ArcotLogger.logError("In UploadCalloutStore.main: Keystore File " + keyStoreFile + " does not exist or is a directory. Upload is not performed for this file.");
+						Logger.logError("In UploadCalloutStore.main: Keystore File " + keyStoreFile + " does not exist or is a directory. Upload is not performed for this file.");
 						System.out.println(ucsObj.getLogTimeHeader(null) + "In UploadCalloutStore.main: Keystore File " + keyStoreFile + " does not exist or is a directory. Upload is not performed for this file.");
 						ucsObj.writeErrorCSV(csvWriter, line, "Keystore file does not exist or is a directory");
 					    encounterError = true;
@@ -1244,7 +1244,7 @@ public class UploadCalloutStore
 						File trustStoreFileHandle = new File(trustStoreFiles[idx]);
 						if (!trustStoreFileHandle.exists() || trustStoreFileHandle.isDirectory())
 						{
-							ArcotLogger.logError("In UploadCalloutStore.main: Truststore File " + trustStoreFiles[idx] + " does not exist or is a directory. Upload is not performed for this file.");
+							Logger.logError("In UploadCalloutStore.main: Truststore File " + trustStoreFiles[idx] + " does not exist or is a directory. Upload is not performed for this file.");
 							System.out.println(ucsObj.getLogTimeHeader(null) + "In UploadCalloutStore.main: Truststore File " + trustStoreFiles[idx] + " does not exist or is a directory. Upload is not performed for this file.");
 							ucsObj.writeErrorCSV(csvWriter, line, "Truststore file does not exist or is a directory");
 						    encounterError = true;
@@ -1256,7 +1256,7 @@ public class UploadCalloutStore
 				// Check if the store file is valid
 				if (isKeystoreExist && !ucsObj.checkStoreValidity(keyStoreFile, keyStorePassPhrase, keyStoreFile.substring(keyStoreFile.lastIndexOf(".")+1), true))
 				{
-				    ArcotLogger.logError("In UploadCalloutStore.main: " + keyStoreFile + " is not a valid Keystore file. Upload is not performed for this file.");
+				    Logger.logError("In UploadCalloutStore.main: " + keyStoreFile + " is not a valid Keystore file. Upload is not performed for this file.");
 				    System.out.println(ucsObj.getLogTimeHeader(null) + "In UploadCalloutStore.main: " + keyStoreFile + " is not a valid Keystore file. Upload is not performed for this file.");
 				    ucsObj.writeErrorCSV(csvWriter, line, "Keystore file or pass phrase is not valid");
 				    encounterError = true;
@@ -1276,12 +1276,12 @@ public class UploadCalloutStore
 				{
 					if (trustStoreFiles.length == 1)
 					{
-						ArcotLogger.logError("In UploadCalloutStore.main: " + trustStoreFile + " is not a valid Trsutstore file. Upload is not performed for this file.");
+						Logger.logError("In UploadCalloutStore.main: " + trustStoreFile + " is not a valid Trsutstore file. Upload is not performed for this file.");
 						System.out.println(ucsObj.getLogTimeHeader(null) + "In UploadCalloutStore.main: " + trustStoreFile + " is not a valid Trsutstore file. Upload is not performed for this file.");
 					}
 					else
 					{
-						ArcotLogger.logError("In UploadCalloutStore.main: At least one of the file in " + trustStoreFile + " is not a valid Trsutstore files. Upload is not performed for these files.");
+						Logger.logError("In UploadCalloutStore.main: At least one of the file in " + trustStoreFile + " is not a valid Trsutstore files. Upload is not performed for these files.");
 						System.out.println(ucsObj.getLogTimeHeader(null) + "In UploadCalloutStore.main: At least one of the file in " + trustStoreFile + " is not a valid Trsutstore files. Upload is not performed for these files.");
 					}
 
@@ -1290,7 +1290,7 @@ public class UploadCalloutStore
 				    continue;
 				}
 
-				ArcotLogger.logInfo("In UploadCalloutStore.main: ucsObj.getTrustStoreFileName() = " + ucsObj.getTrustStoreFileName());
+				Logger.logInfo("In UploadCalloutStore.main: ucsObj.getTrustStoreFileName() = " + ucsObj.getTrustStoreFileName());
 				if (isTruststoreExist && !"".equals(ucsObj.getTrustStoreFileName()))
 				{
 					trustStoreFile = ucsObj.getTrustStoreFileName();
@@ -1305,26 +1305,26 @@ public class UploadCalloutStore
 				if (isKeystoreExist)
 				   keyExpiryDate = ucsObj.getLeastExpiryDate(keyStoreFile, keyStorePassPhrase, keyStoreFile.substring(keyStoreFile.lastIndexOf(".")+1));
 
-				ArcotLogger.logInfo("In UploadCalloutStore.main: keyExpiryDate = " + keyExpiryDate);
+				Logger.logInfo("In UploadCalloutStore.main: keyExpiryDate = " + keyExpiryDate);
 				
 				if (isTruststoreExist)
 				   trustExpiryDate = ucsObj.getLeastExpiryDate(trustStoreFile, trustStorePassPhrase, trustStoreFile.substring(trustStoreFile.lastIndexOf(".")+1));
 
-				ArcotLogger.logInfo("In UploadCalloutStore.main: trustExpiryDate = " + trustExpiryDate);
+				Logger.logInfo("In UploadCalloutStore.main: trustExpiryDate = " + trustExpiryDate);
 				// Look up configuration id using the configuration name
 				int confid = ucsObj.getConfIDByConfName(configName);
-				ArcotLogger.logInfo("In UploadCalloutStore.main: confid = " + confid);
+				Logger.logInfo("In UploadCalloutStore.main: confid = " + confid);
 				if (confid == -1)
 				{
 					if (isKeystoreExist)
 					{
-				    	ArcotLogger.logError("In UploadCalloutStore.main: " + configName + " does not exist in the current callout configuration. Keystore file " + keyStoreFile + " will not be uploaded.");
+				    	Logger.logError("In UploadCalloutStore.main: " + configName + " does not exist in the current callout configuration. Keystore file " + keyStoreFile + " will not be uploaded.");
 				    	System.out.println(ucsObj.getLogTimeHeader(null) + "In UploadCalloutStore.main: " + configName + " does not exist in the current callout configuration. Keystore file " + keyStoreFile + " will not be uploaded.");
 					}
 
 					if (isTruststoreExist)
 					{
-				    	ArcotLogger.logError("In UploadCalloutStore.main: " + configName + " does not exist in the current callout configuration. Keystore file " + trustStoreFile + " will not be uploaded.");
+				    	Logger.logError("In UploadCalloutStore.main: " + configName + " does not exist in the current callout configuration. Keystore file " + trustStoreFile + " will not be uploaded.");
 				    	System.out.println(ucsObj.getLogTimeHeader(null) + "In UploadCalloutStore.main: " + configName + " does not exist in the current callout configuration. Keystore file " + trustStoreFile + " will not be uploaded.");
 					}
 				    ucsObj.writeErrorCSV(csvWriter, line, "Callout Configuration does not exist");
@@ -1334,7 +1334,7 @@ public class UploadCalloutStore
 
 				// check if ConfID already exist or not
 				isInsert = !ucsObj.isConfIDExist(Integer.toString(confid));
-				ArcotLogger.logInfo("In UploadCalloutStore.main: isInsert = " + isInsert);
+				Logger.logInfo("In UploadCalloutStore.main: isInsert = " + isInsert);
 				if (isInsert)
 					rowsAffected = ucsObj.insertStoreFile(confid,
 					                "CertUpload_Admin",
@@ -1362,7 +1362,7 @@ public class UploadCalloutStore
 				{
 					if (isKeystoreExist)
 					{
-						ArcotLogger.logInfo("In UploadCalloutStore.main: " + configName + " with Keystore file " + keyStoreFile + " uploaded successfully!");
+						Logger.logInfo("In UploadCalloutStore.main: " + configName + " with Keystore file " + keyStoreFile + " uploaded successfully!");
 						System.out.println(ucsObj.getLogTimeHeader(null) + "In UploadCalloutStore.main: " + configName + " with Keystore file " + keyStoreFile + " uploaded successfully!");
 					}
 
@@ -1372,7 +1372,7 @@ public class UploadCalloutStore
 						for (int idx = 1;idx < trustStoreFiles.length-1;idx++)
 						    logMsg += ", " + trustStoreFiles[idx];
 						logMsg += " and " + trustStoreFiles[trustStoreFiles.length-1] + " uploaded successfully!";
-						ArcotLogger.logInfo(logMsg);
+						Logger.logInfo(logMsg);
 						System.out.println(ucsObj.getLogTimeHeader(null) + logMsg);
 					}
 				}
@@ -1380,7 +1380,7 @@ public class UploadCalloutStore
 			    {
 					if (isKeystoreExist)
 					{
-						ArcotLogger.logInfo("In UploadCalloutStore.main: " + configName + " with Keystore file " + keyStoreFile + " failed to be uploaded.");
+						Logger.logInfo("In UploadCalloutStore.main: " + configName + " with Keystore file " + keyStoreFile + " failed to be uploaded.");
 						System.out.println(ucsObj.getLogTimeHeader(null) + "In UploadCalloutStore.main: " + configName + " with Keystore file " + keyStoreFile + " failed to be uploaded.");
 					}
 
@@ -1390,7 +1390,7 @@ public class UploadCalloutStore
 						for (int idx = 1;idx < trustStoreFiles.length-1;idx++)
 						    logMsg += ", " + trustStoreFiles[idx];
 						logMsg += " and " + trustStoreFiles[trustStoreFiles.length-1] + " failed to be uploaded.";
-						ArcotLogger.logInfo(logMsg);
+						Logger.logInfo(logMsg);
 						System.out.println(ucsObj.getLogTimeHeader(null) + logMsg);
 					}
 				}
@@ -1403,7 +1403,7 @@ public class UploadCalloutStore
 					String cmdStr = "rm -rf " + keyStoreFile;
 					ucsObj.runCommand(cmdStr);
 					ucsObj.resetOriginalKeyFileName();
-					ArcotLogger.logInfo("In UploadCalloutStore.main: Removing newly created JKS file after upload: " + keyStoreFile);
+					Logger.logInfo("In UploadCalloutStore.main: Removing newly created JKS file after upload: " + keyStoreFile);
 				}
 
 			    if (isTruststoreExist && !"".equals(ucsObj.getOriginalTrustFileName()))
@@ -1411,12 +1411,12 @@ public class UploadCalloutStore
 					String cmdStr = "rm -rf " + trustStoreFile;
 					ucsObj.runCommand(cmdStr);
 					ucsObj.resetOriginalTrustFileName();
-					ArcotLogger.logInfo("In UploadCalloutStore.main: Removing newly created JKS file after upload: " + trustStoreFile);
+					Logger.logInfo("In UploadCalloutStore.main: Removing newly created JKS file after upload: " + trustStoreFile);
 				}
 
             } // while
 
-			ArcotLogger.logInfo("In UploadCalloutStore.main: " + totalRowsAffected + " total rows are uploaded successfully including " + ucsObj.getTrustStoreUploadCount() + " Truststores and " + ucsObj.getKeyStoreUploadCount() + " Keystores.");
+			Logger.logInfo("In UploadCalloutStore.main: " + totalRowsAffected + " total rows are uploaded successfully including " + ucsObj.getTrustStoreUploadCount() + " Truststores and " + ucsObj.getKeyStoreUploadCount() + " Keystores.");
 			System.out.println("\n\n" + ucsObj.getLogTimeHeader(null) + "In UploadCalloutStore.main: " + totalRowsAffected + " total rows are uploaded successfully including " + ucsObj.getTrustStoreUploadCount() + " Truststores and " + ucsObj.getKeyStoreUploadCount() + " Keystores.");
         }
         catch (FileNotFoundException e)
@@ -1433,7 +1433,7 @@ public class UploadCalloutStore
         }
 		catch (Exception e)
 		{
-			ArcotLogger.logError("Error before Final Block", e);
+			Logger.logError("Error before Final Block", e);
 		    ucsObj.writeErrorCSV(csvWriter, "Exception caught - Reason", e.getMessage());
 		    encounterError = true;
 		}
@@ -1458,13 +1458,13 @@ public class UploadCalloutStore
 			}
 			catch (Exception e)
 			{
-				ArcotLogger.logError("Error before Final Block", e);
+				Logger.logError("Error before Final Block", e);
 			}
         }
 
         if (encounterError)
         {
-			ArcotLogger.logInfo("In UploadCalloutStore.main: Error Occurred during upload. Please check " + csvErrorFileName + " to view the store files that failed to be uploaded.");
+			Logger.logInfo("In UploadCalloutStore.main: Error Occurred during upload. Please check " + csvErrorFileName + " to view the store files that failed to be uploaded.");
 			System.out.println(ucsObj.getLogTimeHeader(null) + "In UploadCalloutStore.main: Error Occurred during upload. Please check " + csvErrorFileName + "to view the store files that failed to be uploaded.");
 		}
 	}

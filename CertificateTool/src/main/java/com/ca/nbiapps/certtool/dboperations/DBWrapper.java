@@ -4,10 +4,10 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.util.Properties;
 
-import com.arcot.crypto.CryptoUtil;
-import com.arcot.database.DatabaseConnection;
-import com.arcot.dboperations.DBHandler;
-import com.arcot.logger.ArcotLogger;
+import com..crypto.CryptoUtil;
+import com..database.DatabaseConnection;
+import com..dboperations.DBHandler;
+import com..logger.Logger;
 
 public class DBWrapper extends DBHandler
 {
@@ -21,8 +21,8 @@ public class DBWrapper extends DBHandler
 	{
 		try
 		{
-            System.loadLibrary("arcotjni");
-			//System.load("/Users/kussa01/Documents/System-Task/system_lib/libarcotjni.so");
+            System.loadLibrary("jni");
+			//System.load("/Users/kussa01/Documents/System-Task/system_lib/libjni.so");
 			try
 			{
 				CryptoUtil.initVPASCryptoUtil();
@@ -31,18 +31,18 @@ public class DBWrapper extends DBHandler
 			catch (Exception e)
 			{
 				e.printStackTrace();
-				ArcotLogger.logError("Failed to init vpas crypto and thus cannot read the vpaspwd.ini", e);
+				Logger.logError("Failed to init vpas crypto and thus cannot read the vpaspwd.ini", e);
 			}
 	    }
 		catch (UnsatisfiedLinkError e)
 		{
 			e.printStackTrace();
-			ArcotLogger.logError("Failed to load JNI. It might have been loaded by App server already. **** Ignore this error if dbConnType is set to JDBC ****", e);
+			Logger.logError("Failed to load JNI. It might have been loaded by App server already. **** Ignore this error if dbConnType is set to JDBC ****", e);
 		}
 	    catch (Exception e)
 	    {
 	    	e.printStackTrace();
-			ArcotLogger.logError("Failed to load JNI. It might have been loaded by App server already. **** Ignore this error if dbConnType is set to JDBC ****", e);
+			Logger.logError("Failed to load JNI. It might have been loaded by App server already. **** Ignore this error if dbConnType is set to JDBC ****", e);
 		}
 
     }
@@ -112,7 +112,7 @@ public class DBWrapper extends DBHandler
 	    }
 	    catch (Exception e)
 	    {
-			ArcotLogger.logError("Failed to get JDBC connection", e);
+			Logger.logError("Failed to get JDBC connection", e);
 		}
 
 		return null;
@@ -126,7 +126,7 @@ public class DBWrapper extends DBHandler
 	    }
 	    catch (Exception e)
 	    {
-			ArcotLogger.logError("Failed to get JDBC connection", e);
+			Logger.logError("Failed to get JDBC connection", e);
 		}
 
 	}
@@ -139,7 +139,7 @@ public class DBWrapper extends DBHandler
 	    }
 	    catch (Exception e)
 	    {
-			ArcotLogger.logError("Failed to get JDBC connection", e);
+			Logger.logError("Failed to get JDBC connection", e);
 		}
 
 		return null;
@@ -153,7 +153,7 @@ public class DBWrapper extends DBHandler
 	    }
 	    catch (Exception e)
 	    {
-			ArcotLogger.logError("Failed to get JDBC connection", e);
+			Logger.logError("Failed to get JDBC connection", e);
 		}
 
 		return null;

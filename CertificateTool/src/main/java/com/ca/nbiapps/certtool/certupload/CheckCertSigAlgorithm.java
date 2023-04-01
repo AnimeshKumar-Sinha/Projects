@@ -23,11 +23,11 @@ import java.util.Iterator;
 import java.util.Properties;
 
 //import com.arcot.apps.callouts.sslconfig.*;
-import com.arcot.crypto.Base64;
-import com.arcot.crypto.CryptoUtil;
-import com.arcot.database.DatabaseConnection;
-import com.arcot.logger.ArcotLogger;
-import com.ca.nbiapps.certtool.dboperations.DBWrapper;
+import com.secrity.crypto.Base64;
+import com.secrity.crypto.CryptoUtil;
+import com.secrity.database.DatabaseConnection;
+import com.secrity.logger.ArcotLogger;
+import com.secrity.certtool.dboperations.DBWrapper;
 
 import sun.security.pkcs.PKCS7;
 
@@ -54,9 +54,9 @@ public class CheckCertSigAlgorithm
             prop = new Properties();
 			InputStream in = this.getClass().getResourceAsStream("/certsUpload.properties");
 			if (in != null)
-			    ArcotLogger.logInfo("In CheckCertSigAlgorithm: properties loaded");
+				Secrity.logInfo("In CheckCertSigAlgorithm: properties loaded");
 			else
-			    ArcotLogger.logError("In CheckCertSigAlgorithm: properties not loaded");
+				secrity.logError("In CheckCertSigAlgorithm: properties not loaded");
 			prop.load(in);
 			in.close();
         }
@@ -92,7 +92,7 @@ public class CheckCertSigAlgorithm
         }
         catch(ClassNotFoundException e)
         {
-            ArcotLogger.logError("In CheckCertSigAlgorithm.initConnection: Cannot find JDBC Driver JAR file.", e);
+			Secrity.logError("In CheckCertSigAlgorithm.initConnection: Cannot find JDBC Driver JAR file.", e);
         }
         String jdbcUrl = null;
         String dbuser = null;
@@ -126,16 +126,16 @@ public class CheckCertSigAlgorithm
         	    softEncrypt = false;
 		}
 
-        ArcotLogger.logInfo("In CheckCertSigAlgorithm.initConnection: softEncrypt = " + softEncrypt);
-        ArcotLogger.logInfo("In CheckCertSigAlgorithm.initConnection: connectionType = " + connectionType);
-        ArcotLogger.logInfo("In CheckCertSigAlgorithm.initConnection: jdbcUrl = " + jdbcUrl);
+        LoggerLog.logInfo("In CheckCertSigAlgorithm.initConnection: softEncrypt = " + softEncrypt);
+		LoggerLog.logInfo("In CheckCertSigAlgorithm.initConnection: connectionType = " + connectionType);
+		LoggerLog.logInfo("In CheckCertSigAlgorithm.initConnection: jdbcUrl = " + jdbcUrl);
 
 		masterKey = prop.getProperty("encryptionKey");
 		if (masterKey != null && !"".equals(masterKey))
             masterKey = new String(Base64.decode(masterKey));
 	    else
 	    {
-		    ArcotLogger.logError("In CheckCertSigAlgorithm.initConnection: Cannot get MasterKey value from properties file.");
+			LoggerLog.logError("In CheckCertSigAlgorithm.initConnection: Cannot get MasterKey value from properties file.");
         	initResult = false;
 
         	return initResult;
@@ -166,12 +166,12 @@ public class CheckCertSigAlgorithm
 			boolean gotConnection = false;
             if(connectionType != null && connectionType.equalsIgnoreCase("admin"))
             {
-				ArcotLogger.logInfo("In CheckCertSigAlgorithm.initConnection: Use TransFort DBHandler class to manage DB connections!");
+				LoggerLog.logInfo("In CheckCertSigAlgorithm.initConnection: Use TransFort DBHandler class to manage DB connections!");
                 conn = new DBWrapper().getAdminConnection();
                 if (conn == null)
                 {
                     connectionType = "transfort";
-				    ArcotLogger.logInfo("In CheckCertSigAlgorithm.initConnection: Failed with Admin connection. Use TransFort Type to connect.");
+					LoggerLog.logInfo("In CheckCertSigAlgorithm.initConnection: Failed with Admin connection. Use TransFort Type to connect.");
 			    }
 			    else
 			        gotConnection = true;
@@ -179,7 +179,7 @@ public class CheckCertSigAlgorithm
 
  		    if (!gotConnection && connectionType != null && connectionType.equalsIgnoreCase("transfort"))
             {
-				ArcotLogger.logInfo("In CheckCertSigAlgorithm.initConnection: Use TransFort vpaspwd.ini settings to manage DB connections!");
+				LoggerLog.logInfo("In CheckCertSigAlgorithm.initConnection: Use TransFort vpaspwd.ini settings to manage DB connections!");
                 if (jdbcUrl.indexOf("PROTOCOL=tcps") != -1)
                     connection = new DBWrapper(jdbcUrl,dbuser).getConnection(props);
                 else
@@ -191,14 +191,14 @@ public class CheckCertSigAlgorithm
 
             if (!gotConnection)
             {
-				ArcotLogger.logInfo("In CheckCertSigAlgorithm.initConnection: Use JDBC driver connection to manage DB connections!");
+				LoggerLog.logInfo("In CheckCertSigAlgorithm.initConnection: Use JDBC driver connection to manage DB connections!");
                 connection = new DBWrapper(jdbcUrl,dbuser,dbpasswd).getConnection();
                 initResult = false;
             }
         }
         catch(Exception e)
         {
-            ArcotLogger.logError("In CheckCertSigAlgorithm.initConnection: Connection Failed!", e);
+			LoggerLog.logError("In CheckCertSigAlgorithm.initConnection: Connection Failed!", e);
             initResult = false;
         }
 
@@ -255,11 +255,11 @@ public class CheckCertSigAlgorithm
 			if (rs.next())
 				displayID = rs.getString(1);
 			else
-				ArcotLogger.logError("In CheckCertSigAlgorithm.getConfNameByConfID: Failed to execute query: " + selectDisplayIDStmt);
+				LoggerLog.logError("In CheckCertSigAlgorithm.getConfNameByConfID: Failed to execute query: " + selectDisplayIDStmt);
 		}
 		catch(Exception e)
 		{
-			ArcotLogger.logError("In CheckCertSigAlgorithm.getConfNameByConfID: SQL Failed!", e);
+			LoggerLog.logError("In CheckCertSigAlgorithm.getConfNameByConfID: SQL Failed!", e);
 		}
 		finally
 		{
@@ -280,11 +280,11 @@ public class CheckCertSigAlgorithm
 					connection.close();
 				if(conn != null)
 					new DBWrapper().releaseAdminConnection(conn);
-				ArcotLogger.logInfo("In CheckCertSigAlgorithm.getConfNameByConfID: DB connection Released.");
+				LoggerLog.logInfo("In CheckCertSigAlgorithm.getConfNameByConfID: DB connection Released.");
 			}
 			catch(Exception e)
 			{
-				ArcotLogger.logError("In CheckCertSigAlgorithm.getConfNameByConfID: Error in closing DB connection", e);
+				LoggerLog.logError("In CheckCertSigAlgorithm.getConfNameByConfID: Error in closing DB connection", e);
 			}
 		}
 		return displayID;
@@ -515,12 +515,12 @@ public class CheckCertSigAlgorithm
 		}
 		catch (SQLException sqle)
 		{
-			ArcotLogger.logError("In CheckCertSigAlgorithm.checkSigningCerts: Issue in writing signature algorithm",sqle);
+			LoggerLog.logError("In CheckCertSigAlgorithm.checkSigningCerts: Issue in writing signature algorithm",sqle);
 			retValue = false;
 		}
 		catch (Exception e)
 		{
-			ArcotLogger.logError("In CheckCertSigAlgorithm.checkSigningCerts: Issue in writing signature algorithm",e);
+			LoggerLog.logError("In CheckCertSigAlgorithm.checkSigningCerts: Issue in writing signature algorithm",e);
 			retValue = false;
 		}
 		finally
@@ -535,7 +535,7 @@ public class CheckCertSigAlgorithm
 			}
 			catch ( SQLException sqle )
 			{
-				ArcotLogger.logError("In CheckCertSigAlgorithm.checkSigningCerts: Issue in Creating the CertificateConfig Cache",sqle);
+				LoggerLog.logError("In CheckCertSigAlgorithm.checkSigningCerts: Issue in Creating the CertificateConfig Cache",sqle);
 				retValue = false;
 			}
 
@@ -545,11 +545,11 @@ public class CheckCertSigAlgorithm
 					connection.close();
 				if(conn != null)
 					new DBWrapper().releaseAdminConnection(conn);
-				ArcotLogger.logInfo("In CheckCertSigAlgorithm.checkSigningCerts: DB connection Released.");
+				LoggerLog.logInfo("In CheckCertSigAlgorithm.checkSigningCerts: DB connection Released.");
 			}
 			catch(Exception e)
 			{
-				ArcotLogger.logError("In CheckCertSigAlgorithm.checkSigningCerts: Error in closing DB connection", e);
+				LoggerLog.logError("In CheckCertSigAlgorithm.checkSigningCerts: Error in closing DB connection", e);
 				retValue = false;
 			}
 		}
@@ -575,7 +575,7 @@ public class CheckCertSigAlgorithm
 		catch(IOException e)
 		{
 			if (e.getCause() instanceof UnrecoverableKeyException)
-			    ArcotLogger.logError("In CheckCertSigAlgorithm.checkStoreType: store passphrase might not be correct. Failure reason: " + e.getMessage());
+				LoggerLog.logError("In CheckCertSigAlgorithm.checkStoreType: store passphrase might not be correct. Failure reason: " + e.getMessage());
 			else
 			{
 				try
@@ -588,21 +588,21 @@ public class CheckCertSigAlgorithm
 				catch(IOException ex)
 				{
 					if (ex.getCause() instanceof UnrecoverableKeyException)
-						ArcotLogger.logError("In CheckCertSigAlgorithm.checkStoreType: store passphrase might not be correct. Failure reason: " + ex.getMessage());
+						LoggerLog.logError("In CheckCertSigAlgorithm.checkStoreType: store passphrase might not be correct. Failure reason: " + ex.getMessage());
 					else
-					    ArcotLogger.logError("In CheckCertSigAlgorithm.checkStoreType: IOException Occurred. Failure reason: " + ex.getMessage());
+						LoggerLog.logError("In CheckCertSigAlgorithm.checkStoreType: IOException Occurred. Failure reason: " + ex.getMessage());
 				}
 				catch(KeyStoreException ex)
 				{
-					ArcotLogger.logError("In CheckCertSigAlgorithm.checkStoreType: intended file is not valid " + bundleType + "Failure reason: " + ex.getMessage());
+					LoggerLog.logError("In CheckCertSigAlgorithm.checkStoreType: intended file is not valid " + bundleType + "Failure reason: " + ex.getMessage());
 				}
 				catch(NoSuchAlgorithmException ex)
 				{
-					ArcotLogger.logError("In CheckCertSigAlgorithm.checkStoreType: intended file is not valid " + bundleType + "Failure reason: " + ex.getMessage());
+					LoggerLog.logError("In CheckCertSigAlgorithm.checkStoreType: intended file is not valid " + bundleType + "Failure reason: " + ex.getMessage());
 				}
 				catch(CertificateException ex)
 				{
-					ArcotLogger.logError("In CheckCertSigAlgorithm.checkStoreType: intended file is not valid " + bundleType + "Failure reason: " + ex.getMessage());
+					LoggerLog.logError("In CheckCertSigAlgorithm.checkStoreType: intended file is not valid " + bundleType + "Failure reason: " + ex.getMessage());
 				}
 				finally
 				{
@@ -619,15 +619,15 @@ public class CheckCertSigAlgorithm
 		}
 		catch(KeyStoreException e)
 		{
-		    ArcotLogger.logError("In CheckCertSigAlgorithm.checkStoreType: intended file is not valid " + bundleType + "Failure reason: " + e.getMessage());
+			LoggerLog.logError("In CheckCertSigAlgorithm.checkStoreType: intended file is not valid " + bundleType + "Failure reason: " + e.getMessage());
 		}
 		catch(NoSuchAlgorithmException e)
 		{
-		    ArcotLogger.logError("In CheckCertSigAlgorithm.checkStoreType: intended file is not valid " + bundleType + "Failure reason: " + e.getMessage());
+			LoggerLog.logError("In CheckCertSigAlgorithm.checkStoreType: intended file is not valid " + bundleType + "Failure reason: " + e.getMessage());
 		}
 		catch(CertificateException e)
 		{
-		    ArcotLogger.logError("In CheckCertSigAlgorithm.checkStoreType: intended file is not valid " + bundleType + "Failure reason: " + e.getMessage());
+			LoggerLog.logError("In CheckCertSigAlgorithm.checkStoreType: intended file is not valid " + bundleType + "Failure reason: " + e.getMessage());
 		}
 		finally
 		{
@@ -683,21 +683,21 @@ public class CheckCertSigAlgorithm
 		catch(IOException e)
 		{
 			if (e.getCause() instanceof UnrecoverableKeyException)
-			    ArcotLogger.logError("In CheckCertSigAlgorithm.getJKSSigAlgorithm: store passphrase might not be correct. Failure reason: " + e.getMessage());
+				LoggerLog.logError("In CheckCertSigAlgorithm.getJKSSigAlgorithm: store passphrase might not be correct. Failure reason: " + e.getMessage());
 			else
-			    ArcotLogger.logError("In CheckCertSigAlgorithm.getJKSSigAlgorithm: IOException Occurred. Failure reason: " + e.getMessage());
+				LoggerLog.logError("In CheckCertSigAlgorithm.getJKSSigAlgorithm: IOException Occurred. Failure reason: " + e.getMessage());
 		}
 		catch(KeyStoreException e)
 		{
-		    ArcotLogger.logError("In CheckCertSigAlgorithm.getJKSSigAlgorithm: intended file is not valid " + "Failure reason: " + e.getMessage());
+			LoggerLog.logError("In CheckCertSigAlgorithm.getJKSSigAlgorithm: intended file is not valid " + "Failure reason: " + e.getMessage());
 		}
 		catch(NoSuchAlgorithmException e)
 		{
-		    ArcotLogger.logError("In CheckCertSigAlgorithm.getJKSSigAlgorithm: intended file is not valid " + "Failure reason: " + e.getMessage());
+			LoggerLog.logError("In CheckCertSigAlgorithm.getJKSSigAlgorithm: intended file is not valid " + "Failure reason: " + e.getMessage());
 		}
 		catch(CertificateException e)
 		{
-		    ArcotLogger.logError("In CheckCertSigAlgorithm.getJKSSigAlgorithm: intended file is not valid " + "Failure reason: " + e.getMessage());
+			LoggerLog.logError("In CheckCertSigAlgorithm.getJKSSigAlgorithm: intended file is not valid " + "Failure reason: " + e.getMessage());
 		}
 		return sigAlgorithm;
 	}
@@ -720,7 +720,7 @@ public class CheckCertSigAlgorithm
             if (outputFileName != null)
             {
 			    csvWriter = new FileWriter(outputFileName);
-                ArcotLogger.logInfo("In CheckCertSigAlgorithm.checkCalloutCerts: Output ARCalloutSSLConfig table certificate signature algorithm information.");
+				LoggerLog.logInfo("In CheckCertSigAlgorithm.checkCalloutCerts: Output ARCalloutSSLConfig table certificate signature algorithm information.");
 			    writeOutputFile(csvWriter, "certId, displayID, sigAlgorithm");
 			}
 			else
@@ -762,7 +762,7 @@ public class CheckCertSigAlgorithm
 
 				if (keyStoreBytes != null && keyStoreBytes.length != 0)
 				{
-					ArcotLogger.logInfo("In CheckCertSigAlgorithm.checkCalloutCerts: received keystore bytes length is " + keyStoreBytes.length);
+					LoggerLog.logInfo("In CheckCertSigAlgorithm.checkCalloutCerts: received keystore bytes length is " + keyStoreBytes.length);
 					sigAlgs = getJKSSigAlgorithm(keyStoreBytes, keyPassPhrase).split(",", -1);
 
 					for (int idx = 0;idx < sigAlgs.length;idx++)
@@ -776,7 +776,7 @@ public class CheckCertSigAlgorithm
 				}
 				if (trustStoreBytes != null && trustStoreBytes.length != 0)
 				{
-					ArcotLogger.logInfo("In CheckCertSigAlgorithm.checkCalloutCerts: received truststore bytes length is " + trustStoreBytes.length);
+					LoggerLog.logInfo("In CheckCertSigAlgorithm.checkCalloutCerts: received truststore bytes length is " + trustStoreBytes.length);
 					sigAlgs = getJKSSigAlgorithm(trustStoreBytes, trustPassPhrase).split(",", -1);
 
 					for (int idx = 0;idx < sigAlgs.length;idx++)
@@ -792,12 +792,12 @@ public class CheckCertSigAlgorithm
 		}
 		catch (SQLException sqle)
 		{
-			ArcotLogger.logError("In CheckCertSigAlgorithm.checkCalloutCerts: Issue in Creating the CertificateConfig Cache",sqle);
+			LoggerLog.logError("In CheckCertSigAlgorithm.checkCalloutCerts: Issue in Creating the CertificateConfig Cache",sqle);
 			retValue = false;
 		}
 		catch (Exception e)
 		{
-			ArcotLogger.logError("In CheckCertSigAlgorithm.checkCalloutCerts: Issue in Creating the CertificateConfig Cache",e);
+			LoggerLog.logError("In CheckCertSigAlgorithm.checkCalloutCerts: Issue in Creating the CertificateConfig Cache",e);
 			retValue = false;
 		}
 		finally
@@ -812,7 +812,7 @@ public class CheckCertSigAlgorithm
 			}
 			catch ( SQLException sqle )
 			{
-				ArcotLogger.logError("In CheckCertSigAlgorithm.checkCalloutCerts: Issue in Creating the CertificateConfig Cache",sqle);
+				LoggerLog.logError("In CheckCertSigAlgorithm.checkCalloutCerts: Issue in Creating the CertificateConfig Cache",sqle);
 				retValue = false;
 			}
 
@@ -822,11 +822,11 @@ public class CheckCertSigAlgorithm
 					connection.close();
 				if(conn != null)
 					new DBWrapper().releaseAdminConnection(conn);
-				ArcotLogger.logInfo("In CheckCertSigAlgorithm.checkCalloutCerts: DB connection Released.");
+				LoggerLog.logInfo("In CheckCertSigAlgorithm.checkCalloutCerts: DB connection Released.");
 			}
 			catch(Exception e)
 			{
-				ArcotLogger.logError("In CheckCertSigAlgorithm.checkCalloutCerts: Error in closing DB connection", e);
+				LoggerLog.logError("In CheckCertSigAlgorithm.checkCalloutCerts: Error in closing DB connection", e);
 				retValue = false;
 			}
 		}
