@@ -1,0 +1,217 @@
+Self-Harness (Minimal) — Build Spec
+
+A small, runnable proof-of-concept of the Self-Harness loop (arXiv:2606.09498): an LLM agent that improves its own operating harness — not its weights — by mining its failures, proposing small edits to its prompt/scaffold, and keeping only edits that pass regression tests.
+
+This spec is written to be handed to Claude Code. Build it incrementally in the order given. Keep it minimal — the goal is to watch the harness improve over a few rounds, not to reproduce the paper's benchmark numbers.
+
+
+1. Core idea (so you have context while building)
+
+
+Model M is fixed. We never train or fine-tune. It is called via API.
+Harness h is everything around the model: the system prompt, instructions, output-format rules, a checklist, retry logic. This is the only thing that changes.
+The same model M plays two roles: it solves tasks (the agent), and it proposes fixes to its own harness (the improver).
+Improvement is an iterative loop over T rounds. Each round turns failure evidence into candidate harness edits, validates them, and merges the survivors.
+
+
+The whole loop is Algorithm 1 in the paper. Implement it literally.
+
+
+2. Scope & non-goals
+
+In scope
+
+
+One fixed model via the Anthropic API.
+A small verifiable task suite (auto-graded, no human in the loop).
+The three stages: Weakness Mining → Harness Proposal → Proposal Validation.
+Held-in / held-out split with a strict acceptance rule.
+Full logging of every round, edit, and score.
+
+
+Out of scope (do NOT build)
+
+
+No fine-tuning / weight updates.
+No Docker, no Terminal-Bench, no multi-model comparison.
+No web UI. CLI + log files only.
+
+
+
+3. Task suite (the keystone)
+
+The loop only works if outcomes are automatically verifiable. Default to unit-tested coding tasks because they're fully self-contained (no DB, no external services).
+
+Provide ~20 small "write a Python function" tasks, each as:
+
+tasks/
+  task_001/
+    prompt.md        # natural-language problem statement
+    tests.py         # asserts that import and check `solution`
+  task_002/
+    ...
+
+A task passes iff the model's returned code defines the required function and all asserts in tests.py pass when run in a sandboxed subprocess (timeout + restricted namespace).
+
+
+Alternative suite (optional flag --suite sql): Text-to-SQL over a bundled SQLite DB, graded by comparing returned rows to a gold result set. Use this if you'd rather reuse an existing LLM-as-judge evaluator. Default remains coding.
+
+
+
+Split: deterministically partition tasks into held_in (mine failures from these) and held_out (never tuned on; used only to catch overfit edits). Default 60/40, seeded.
+
+
+4. Harness representation
+
+Represent the harness as a dict of named, editable text blocks so edits stay small and mergeable:
+
+pythonharness = {
+  "role": "You are a careful Python programmer.",
+  "strategy": "",          # starts empty — room to grow
+  "output_format": "Return ONLY a fenced ```python code block.",
+  "checklist": "",         # starts empty
+}
+
+The system prompt sent to M is just these blocks concatenated in a fixed order. Starting harness h0 should be deliberately minimal so there's headroom to improve.
+
+An edit is a structured op on one block:
+
+python{"op": "append" | "replace", "block": "checklist", "text": "...", "rationale": "..."}
+
+Constrain proposals to be minimal and targeted: one block, tied to one named failure pattern. Reject edits that try to rewrite everything.
+
+
+5. Components to implement
+
+5.1 model.py — fixed model wrapper
+
+
+Single function call_model(system: str, user: str) -> str.
+Uses the Anthropic API. Read ANTHROPIC_API_KEY from env.
+Default model: a cheap one (Haiku-class) — the loop is call-heavy (K candidates × tasks × 2 splits × T rounds).
+Add basic retry/backoff and a hard token cap.
+
+
+5.2 evaluate.py — EVALUATE(M, h, split)
+
+
+Runs M under harness h on every task in a split.
+Returns (pass_rate, records) where records is a list of per-task {task_id, passed, model_output, error, trace}.
+Sandbox test execution (subprocess, timeout ~10s, no network).
+
+
+5.3 mine.py — Weakness Mining
+
+
+Input: the failed records from the held-in run.
+Ask M to cluster the failures into a few (≤5) named, model-specific failure patterns (e.g. "off-by-one on ranges", "forgets edge case: empty input", "wraps code in prose"), each with 1–2 example task ids.
+Output a compact evidence bundle B_t (JSON).
+
+
+5.4 propose.py — Harness Proposal
+
+
+Input: current harness h_t + evidence bundle B_t.
+Ask M to produce K diverse but minimal candidate edits, each tied to exactly one failure pattern. (K default 4.)
+Return list of structured edit ops (Section 4).
+
+
+5.5 validate.py — Proposal Validation (the strict gate)
+
+For each candidate edit e:
+
+
+Apply e to h_t → h_candidate.
+EVALUATE on both held-in and held-out.
+Δ_in  = pass_rate_in(h_candidate)  − pass_rate_in(h_t)
+Δ_out = pass_rate_out(h_candidate) − pass_rate_out(h_t)
+Accept iff Δ_in ≥ 0 and Δ_out ≥ 0 and max(Δ_in, Δ_out) > 0.
+(No regression on either split; strict improvement on at least one.)
+Accepted → keep (edit, Δ_in, Δ_out). Else → reject (log the reason).
+
+
+5.6 merge.py — MERGEACCEPTED(h_t, accepted)
+
+
+If nothing accepted → h_{t+1} = h_t (unchanged).
+Else → apply all accepted edits to produce h_{t+1}.
+Handle two edits touching the same block deterministically (e.g. order by Δ, append in sequence).
+
+
+5.7 loop.py — main driver (Algorithm 1)
+
+load tasks, split held_in / held_out
+h = h0
+for t in range(T):
+    pass_in, records_in = EVALUATE(M, h, held_in)
+    pass_out, _         = EVALUATE(M, h, held_out)
+    log_round_start(t, pass_in, pass_out, h)
+
+    B = mine(failed(records_in))
+    candidates = propose(M, h, B, K)
+
+    accepted = []
+    for e in candidates:
+        h_c = apply(e, h)
+        d_in  = EVALUATE(M, h_c, held_in).pass_rate  - pass_in
+        d_out = EVALUATE(M, h_c, held_out).pass_rate - pass_out
+        if d_in >= 0 and d_out >= 0 and max(d_in, d_out) > 0:
+            accepted.append((e, d_in, d_out)); log_accept(e, d_in, d_out)
+        else:
+            log_reject(e, d_in, d_out)
+
+    h = h if not accepted else merge(h, accepted)
+    snapshot_harness(t, h)
+return h
+
+
+6. Config (config.yaml or CLI flags)
+
+ParamDefaultMeaningmodelcheap/Haiku-classfixed model MK4candidate edits proposed per roundT5improvement roundssuitecodingcoding or sqlsplit_ratio0.6held-in fractionseed42deterministic split
+
+
+7. Logging & output (this is the payoff)
+
+Write a runs/<timestamp>/ folder containing:
+
+
+round_<t>.json — pass rates, evidence bundle, every candidate with accept/reject + deltas.
+harness_<t>.json — snapshot of the harness after each round.
+summary.md — a table of held-in / held-out pass rate per round, and a human-readable list of which edits were accepted and why.
+
+
+The most interesting artifact is what edits the model proposed about its own failures — make these easy to read in summary.md.
+
+
+8. Acceptance criteria (definition of done)
+
+
+python loop.py runs end-to-end on the bundled coding suite with only ANTHROPIC_API_KEY set.
+Held-in and held-out pass rates are reported per round.
+At least one round shows an accepted edit with non-negative deltas on both splits.
+summary.md clearly shows the harness growing (blocks gaining targeted instructions) across rounds.
+Rejected edits are logged with their deltas so the gate is auditable.
+
+
+
+9. Build order for Claude Code
+
+
+Scaffold repo + config, write 20 coding tasks with tests.
+model.py (verify a single call works).
+evaluate.py + sandbox runner (verify pass-rate on h0).
+mine.py → propose.py (inspect the proposed edits by hand first).
+validate.py + merge.py.
+loop.py + logging + summary.md.
+Run T=3 cheap end-to-end, read the logs, then scale T/task count.
+
+
+
+10. Gotchas (read before running a big job)
+
+
+Cost / quota: the loop fans out to many model calls. Programmatic API usage draws from your API credits (separate from a chat subscription) — start with T=2, K=2, and a small suite, then scale.
+Noisy deltas: with too few tasks, one flip swings the pass rate and the gate promotes junk. Use enough tasks per split (≥10 each) so a 1-task change isn't decisive.
+Sandbox safety: run model-generated code in a locked-down subprocess (timeout, no network, restricted builtins). Never exec it in-process.
+Editable surface: keep harness blocks explicit and labeled, or proposals come out vague and unmergeable.
+Determinism: seed the split and set temperature low for the solver role so deltas reflect harness changes, not sampling noise. The proposer role can run warmer for edit diversity.

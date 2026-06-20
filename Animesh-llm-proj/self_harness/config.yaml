@@ -1,0 +1,8 @@
+model: claude-haiku-4-5-20251001
+K: 4                  # candidate edits proposed per round
+T: 5                  # improvement rounds
+suite: coding         # coding or sql
+split_ratio: 0.6      # held-in fraction
+seed: 42              # deterministic split
+max_tokens: 1024      # hard token cap per call
+timeout: 10           # sandbox subprocess timeout (seconds)
