@@ -1,0 +1,10 @@
+{
+  "held_in": 1.0,
+  "held_out": 1.0,
+  "harness": {
+    "role": "You are a careful Python programmer.",
+    "strategy": "",
+    "output_format": "Return ONLY a fenced ```python code block containing your solution function.",
+    "checklist": ""
+  }
+}
